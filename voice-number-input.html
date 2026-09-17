@@ -355,10 +355,33 @@
     save();
   }
 
+  function speakNumber(num) {
+    if (!('speechSynthesis' in window)) return;
+    try {
+      const wasListening = listening;
+      if (wasListening && recognition) {
+        try { recognition.stop(); } catch (e) {}
+      }
+      const utter = new SpeechSynthesisUtterance(String(fmt(num)));
+      utter.lang = 'ja-JP';
+      utter.rate = 1.0;
+      utter.onend = utter.onerror = function() {
+        if (wasListening && recognition) {
+          setTimeout(function() {
+            try { recognition.start(); } catch (e) {}
+          }, 300);
+        }
+      };
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utter);
+    } catch (e) { /* ignore */ }
+  }
+
   function addValue(num, label) {
     if (isNaN(num)) return;
     entries.push({ value: num, label: label || '', t: Date.now() });
     render();
+    speakNumber(num);
   }
 
   listEl.addEventListener('click', function(e) {
