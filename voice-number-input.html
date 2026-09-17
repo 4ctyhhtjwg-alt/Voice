@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>音声数値入力</title>
+<style>
+  :root {
+    --bg: #f4f6f5;
+    --card-bg: #ffffff;
+    --text: #1a2e22;
+    --text-muted: #5c6b62;
+    --accent: #2f7a4f;
+    --accent-dark: #235c3b;
+    --danger: #b3402f;
+    --border: #dde4e0;
+    --listening-glow: rgba(47, 122, 79, 0.25);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14201a;
+      --card-bg: #1c2b23;
+      --text: #eaf2ec;
+      --text-muted: #9fb3a8;
+      --accent: #4fae7c;
+      --accent-dark: #3d8c62;
+      --border: #2c3d34;
+      --listening-glow: rgba(79, 174, 124, 0.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14201a;
+    --card-bg: #1c2b23;
+    --text: #eaf2ec;
+    --text-muted: #9fb3a8;
+    --accent: #4fae7c;
+    --accent-dark: #3d8c62;
+    --border: #2c3d34;
+    --listening-glow: rgba(79, 174, 124, 0.3);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+    min-height: 100vh;
+    padding: 16px;
+  }
+  .wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  h1 {
+    font-size: 1.15rem;
+    text-align: center;
+    margin: 4px 0 0;
+    color: var(--text);
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+  }
+  .mic-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  #micBtn {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-size: 2.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  #micBtn:active { transform: scale(0.96); }
+  #micBtn.listening {
+    background: var(--danger);
+    box-shadow: 0 0 0 12px var(--listening-glow);
+  }
+  #status {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    min-height: 1.3em;
+    text-align: center;
+  }
+  #heard {
+    font-size: 1rem;
+    color: var(--text);
+    text-align: center;
+    min-height: 1.4em;
+  }
+  .field-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .field-row label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .field-row input[type="text"] {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.95rem;
+  }
+  .manual-add {
+    display: flex;
+    gap: 8px;
+  }
+  .manual-add input {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 1rem;
+  }
+  .manual-add button {
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: none;
+    background: var(--accent-dark);
+    color: white;
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    text-align: center;
+  }
+  .summary div {
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 8px 4px;
+  }
+  .summary .val {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--accent-dark);
+  }
+  .summary .lbl {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  ul#list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+  ul#list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--border);
+    font-size: 1.05rem;
+  }
+  ul#list li:last-child { border-bottom: none; }
+  ul#list .idx {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    width: 2em;
+  }
+  ul#list .val {
+    flex: 1;
+    font-weight: 600;
+  }
+  ul#list .label {
+    flex: 1;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 400;
+  }
+  ul#list button.del {
+    border: none;
+    background: none;
+    color: var(--danger);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 4px 8px;
+  }
+  .actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .actions button {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .actions button.primary {
+    background: var(--accent);
+    color: white;
+    border: none;
+  }
+  .empty-note {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    padding: 12px 0;
+  }
+  #copyMsg {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--accent-dark);
+    min-height: 1.2em;
+  }
+  .support-warning {
+    background: var(--card-bg);
+    border: 1px solid var(--danger);
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 0.85rem;
+    color: var(--danger);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎙️ 音声数値入力</h1>
+
+  <div class="card mic-area">
+    <button id="micBtn" aria-label="録音開始">🎤</button>
+    <div id="status">タップして話しかけてください</div>
+    <div id="heard"></div>
+  </div>
+
+  <div class="card" id="unsupportedCard" style="display:none;">
+    <div class="support-warning">
+      このブラウザは音声認識に対応していません。<br>
+      Android版Chromeなど対応ブラウザでお試しください。<br>
+      下の手入力欄はそのまま使えます。
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="field-row" style="margin-bottom:10px;">
+      <label for="tagInput">ラベル(任意)</label>
+      <input type="text" id="tagInput" placeholder="例: 圃場A / SPAD">
+    </div>
+    <div class="manual-add">
+      <input type="text" id="manualInput" inputmode="decimal" placeholder="数値を手入力">
+      <button id="manualAddBtn">追加</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="summary">
+      <div><div class="val" id="sumCount">0</div><div class="lbl">件数</div></div>
+      <div><div class="val" id="sumTotal">0</div><div class="lbl">合計</div></div>
+      <div><div class="val" id="sumAvg">0</div><div class="lbl">平均</div></div>
+      <div><div class="val" id="sumRange">-</div><div class="lbl">最小-最大</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <ul id="list"></ul>
+    <div class="empty-note" id="emptyNote">まだ数値がありません</div>
+  </div>
+
+  <div class="actions">
+    <button id="copyBtn">📋 コピー</button>
+    <button id="exportBtn">⬇️ CSV保存</button>
+    <button id="clearBtn" class="primary">🗑️ 全消去</button>
+  </div>
+  <div id="copyMsg"></div>
+</div>
+
+<script>
+(function() {
+  const STORAGE_KEY = 'voice-number-entries-v1';
+  let entries = [];
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) entries = JSON.parse(saved);
+  } catch (e) { entries = []; }
+
+  const listEl = document.getElementById('list');
+  const emptyNote = document.getElementById('emptyNote');
+  const sumCount = document.getElementById('sumCount');
+  const sumTotal = document.getElementById('sumTotal');
+  const sumAvg = document.getElementById('sumAvg');
+  const sumRange = document.getElementById('sumRange');
+  const statusEl = document.getElementById('status');
+  const heardEl = document.getElementById('heard');
+  const micBtn = document.getElementById('micBtn');
+  const tagInput = document.getElementById('tagInput');
+  const manualInput = document.getElementById('manualInput');
+  const copyMsg = document.getElementById('copyMsg');
+
+  function fmt(n) {
+    return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, '');
+  }
+
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); } catch (e) {}
+  }
+
+  function render() {
+    listEl.innerHTML = '';
+    if (entries.length === 0) {
+      emptyNote.style.display = 'block';
+    } else {
+      emptyNote.style.display = 'none';
+      entries.forEach((e, i) => {
+        const li = document.createElement('li');
+        li.innerHTML =
+          '<span class="idx">' + (i + 1) + '</span>' +
+          '<span class="val">' + fmt(e.value) + '</span>' +
+          '<span class="label">' + (e.label || '') + '</span>' +
+          '<button class="del" data-i="' + i + '" aria-label="削除">✕</button>';
+        listEl.appendChild(li);
+      });
+    }
+    const values = entries.map(e => e.value);
+    const count = values.length;
+    const total = values.reduce((a, b) => a + b, 0);
+    sumCount.textContent = count;
+    sumTotal.textContent = count ? fmt(total) : '0';
+    sumAvg.textContent = count ? fmt(total / count) : '0';
+    sumRange.textContent = count ? fmt(Math.min(...values)) + ' - ' + fmt(Math.max(...values)) : '-';
+    save();
+  }
+
+  function addValue(num, label) {
+    if (isNaN(num)) return;
+    entries.push({ value: num, label: label || '', t: Date.now() });
+    render();
+  }
+
+  listEl.addEventListener('click', function(e) {
+    const btn = e.target.closest('button.del');
+    if (!btn) return;
+    const i = parseInt(btn.dataset.i, 10);
+    entries.splice(i, 1);
+    render();
+  });
+
+  document.getElementById('manualAddBtn').addEventListener('click', function() {
+    const v = parseFloat(manualInput.value.replace(/,/g, '.'));
+    if (!isNaN(v)) {
+      addValue(v, tagInput.value.trim());
+      manualInput.value = '';
+    }
+  });
+  manualInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('manualAddBtn').click();
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', function() {
+    if (entries.length === 0) return;
+    if (confirm('すべての数値を削除しますか？')) {
+      entries = [];
+      render();
+    }
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', async function() {
+    const text = entries.map(e => e.value + (e.label ? ('\t' + e.label) : '')).join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      copyMsg.textContent = 'コピーしました';
+    } catch (e) {
+      copyMsg.textContent = 'コピーできませんでした';
+    }
+    setTimeout(() => { copyMsg.textContent = ''; }, 2000);
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', function() {
+    let csv = '\uFEFF番号,数値,ラベル\n';
+    entries.forEach((e, i) => {
+      csv += (i + 1) + ',' + e.value + ',' + (e.label || '').replace(/,/g, '、') + '\n';
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'voice-numbers.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  // --- Japanese number word helpers ---
+  const kanjiDigits = { '零':0,'〇':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9 };
+  const kanjiUnits = { '十':10,'百':100,'千':1000 };
+  const kanjiBigUnits = { '万':10000, '億':100000000 };
+
+  function kanjiSectionToNumber(str) {
+    // handles a run of digits/units under 万 (e.g. "二百三十四")
+    let result = 0, current = 0;
+    for (const ch of str) {
+      if (ch in kanjiDigits) {
+        current = kanjiDigits[ch];
+      } else if (ch in kanjiUnits) {
+        const unit = kanjiUnits[ch];
+        result += (current === 0 ? 1 : current) * unit;
+        current = 0;
+      }
+    }
+    result += current;
+    return result;
+  }
+
+  function kanjiToNumber(str) {
+    let total = 0;
+    let rest = str;
+    for (const bigUnit of ['億', '万']) {
+      if (rest.includes(bigUnit)) {
+        const parts = rest.split(bigUnit);
+        const sectionVal = parts[0] === '' ? 1 : kanjiSectionToNumber(parts[0]);
+        total += sectionVal * kanjiBigUnits[bigUnit];
+        rest = parts.slice(1).join(bigUnit);
+      }
+    }
+    total += kanjiSectionToNumber(rest);
+    return total;
+  }
+
+  function extractNumberFromSpeech(raw) {
+    let text = raw.trim();
+    // normalize: 点 -> ., マイナス -> -
+    text = text.replace(/マイナス|負の/g, '-');
+    // find arabic numeral (with optional decimal via 点 or .)
+    let normalized = text.replace(/([0-9０-９]+)\s*点\s*([0-9０-９]+)/g, function(m, a, b) {
+      return toHalfWidth(a) + '.' + toHalfWidth(b);
+    });
+    normalized = toHalfWidth(normalized);
+    const arabicMatch = normalized.match(/-?\d+(\.\d+)?/);
+    if (arabicMatch) {
+      return parseFloat(arabicMatch[0]);
+    }
+    // try kanji numerals
+    const kanjiMatch = text.match(/[一二三四五六七八九十百千万億零〇]+/);
+    if (kanjiMatch) {
+      let neg = text.trim().startsWith('-');
+      let val = kanjiToNumber(kanjiMatch[0]);
+      return neg ? -val : val;
+    }
+    return NaN;
+  }
+
+  function toHalfWidth(str) {
+    return str.replace(/[０-９]/g, function(ch) {
+      return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0);
+    });
+  }
+
+  // --- Speech recognition ---
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+  let listening = false;
+
+  if (!SpeechRecognition) {
+    document.getElementById('unsupportedCard').style.display = 'block';
+    statusEl.textContent = '音声認識非対応ブラウザです';
+    micBtn.disabled = true;
+    micBtn.style.opacity = '0.4';
+  } else {
+    recognition = new SpeechRecognition();
+    recognition.lang = 'ja-JP';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onstart = function() {
+      listening = true;
+      micBtn.classList.add('listening');
+      micBtn.textContent = '⏹️';
+      statusEl.textContent = '聞き取り中...話してください';
+    };
+
+    recognition.onend = function() {
+      listening = false;
+      micBtn.classList.remove('listening');
+      micBtn.textContent = '🎤';
+      statusEl.textContent = 'タップして話しかけてください';
+    };
+
+    recognition.onerror = function(e) {
+      statusEl.textContent = 'エラー: ' + (e.error === 'not-allowed' ? 'マイクの許可が必要です' : e.error);
+    };
+
+    recognition.onresult = function(event) {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          heardEl.textContent = '聞き取り: ' + transcript;
+          const num = extractNumberFromSpeech(transcript);
+          if (!isNaN(num)) {
+            addValue(num, tagInput.value.trim());
+            statusEl.textContent = fmt(num) + ' を追加しました';
+          } else {
+            statusEl.textContent = '数値を認識できませんでした: 「' + transcript + '」';
+          }
+        } else {
+          interim = transcript;
+        }
+      }
+      if (interim) heardEl.textContent = '聞き取り中: ' + interim;
+    };
+
+    micBtn.addEventListener('click', function() {
+      if (listening) {
+        recognition.stop();
+      } else {
+        heardEl.textContent = '';
+        try {
+          recognition.start();
+        } catch (e) { /* already started */ }
+      }
+    });
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
