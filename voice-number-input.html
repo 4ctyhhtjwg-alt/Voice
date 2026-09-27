@@ -557,10 +557,20 @@
       if (interim) heardEl.textContent = '聞き取り中: ' + interim;
     };
 
+    function unlockSpeechSynthesis() {
+      if (!('speechSynthesis' in window)) return;
+      try {
+        const unlock = new SpeechSynthesisUtterance(' ');
+        unlock.volume = 0;
+        window.speechSynthesis.speak(unlock);
+      } catch (e) { /* ignore */ }
+    }
+
     micBtn.addEventListener('click', function() {
       if (listening) {
         recognition.stop();
       } else {
+        unlockSpeechSynthesis();
         heardEl.textContent = '';
         try {
           recognition.start();
