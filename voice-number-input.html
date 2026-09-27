@@ -355,14 +355,15 @@
     save();
   }
 
-  function speakNumber(num) {
+  function speakNumber(num, prefix) {
     if (!('speechSynthesis' in window)) return;
     try {
       const wasListening = listening;
       if (wasListening && recognition) {
         try { recognition.stop(); } catch (e) {}
       }
-      const utter = new SpeechSynthesisUtterance(String(fmt(num)));
+      const text = prefix ? (prefix + '、' + fmt(num)) : String(fmt(num));
+      const utter = new SpeechSynthesisUtterance(text);
       utter.lang = 'ja-JP';
       utter.rate = 1.0;
       utter.onend = utter.onerror = function() {
@@ -543,6 +544,17 @@
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
           heardEl.textContent = '聞き取り: ' + transcript;
+          if (/消して|削除|取り消し|キャンセル|やり直し/.test(transcript)) {
+            if (entries.length > 0) {
+              const removed = entries.pop();
+              render();
+              statusEl.textContent = fmt(removed.value) + ' を削除しました';
+              speakNumber(removed.value, '削除しました');
+            } else {
+              statusEl.textContent = '削除する数値がありません';
+            }
+            continue;
+          }
           const num = extractNumberFromSpeech(transcript);
           if (!isNaN(num)) {
             addValue(num, tagInput.value.trim());
